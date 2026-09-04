@@ -4,11 +4,11 @@ const MAX_PARTICIPANTS = 6;
 
 const rooms = new Map();
 
-const createRoom = () => {
+const createRoom = ({ password = '' } = {}) => {
     const roomId = uuidv4().slice(0, 8);
 
     rooms.set(roomId, {
-        password: '',
+        password,
         users: new Map(),
     });
 
@@ -17,6 +17,23 @@ const createRoom = () => {
 
 const getRoom = (roomId) => {
     return rooms.get(roomId);
+};
+
+const checkRoom = ({ roomId, password }) => {
+    if (!roomId) {
+        throw new Error('Room code is required');
+    }
+
+    const room = rooms.get(roomId);
+    if (!room) {
+        throw new Error('Room not found');
+    }
+
+    if ((room.password || '') !== (password || '')) {
+        throw new Error('Incorrect room password');
+    }
+
+    return { roomId };
 };
 
 const joinRoom = ({ roomId, emailId, password, socketId }) => {
@@ -86,6 +103,7 @@ const leaveRoom = (roomId, socketId) => {
 module.exports = {
     createRoom,
     getRoom,
+    checkRoom,
     joinRoom,
     leaveRoom,
 };

@@ -44,10 +44,12 @@ const Homepage = () => {
     setCreatingRoom(true);
     try {
       const res = await fetch(`${API_URL}/api/room/create-room`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ password }),
       });
 
       if (res.status === 401) {
@@ -78,7 +80,7 @@ const Homepage = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleEnter = () => {
+  const handleEnter = async () => {
     setError('');
     if (!name.trim()) {
       setError('Enter your name first');
@@ -90,10 +92,37 @@ const Homepage = () => {
     }
     setLoading(true);
 
-    // Save identifier to sessionStorage for room joining
-    sessionStorage.setItem('emailId', name.trim());
-    sessionStorage.setItem('roomPassword', password);
-    navigate(`/room/${roomId.trim()}`);
+    try {
+      const res = await fetch(`${API_URL}/api/room/check-room`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ roomId: roomId.trim(), password }),
+      });
+
+      if (res.status === 401) {
+        logout();
+        navigate('/login');
+        return;
+      }
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setError(data.message || 'Could not join this room.');
+        return;
+      }
+
+      sessionStorage.setItem('emailId', name.trim());
+      sessionStorage.setItem('roomPassword', password);
+      navigate(`/room/${roomId.trim()}`);
+    } catch (e) {
+      console.error('Room check error:', e);
+      setError('Could not reach server. Is the backend running?');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogout = () => {

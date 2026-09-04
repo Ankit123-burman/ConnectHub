@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { MicOff, VideoOff } from 'lucide-react';
+import { MicOff } from 'lucide-react';
 import ConnectionBadge from './ConnectionBadge.jsx';
 
 const VideoTile = ({
@@ -14,10 +14,13 @@ const VideoTile = ({
   const videoRef = useRef(null);
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+    if (!videoRef.current || !stream) return;
+
+    videoRef.current.srcObject = stream;
+    if (!isCameraOff) {
+      videoRef.current.play().catch(() => {});
     }
-  }, [stream]);
+  }, [stream, isCameraOff]);
 
   useEffect(() => {
     if (registerNode) registerNode(videoRef.current);
@@ -28,13 +31,12 @@ const VideoTile = ({
 
   return (
     <div className="video-tile">
+      <video className={isCameraOff ? 'video-tile__video--hidden' : ''} ref={videoRef} autoPlay playsInline muted={isLocal} />
       {isCameraOff ? (
         <div className="video-tile__avatar">
           <span>{(emailId || '?').charAt(0).toUpperCase()}</span>
         </div>
-      ) : (
-        <video ref={videoRef} autoPlay playsInline muted={isLocal} />
-      )}
+      ) : null}
 
       <div className="video-tile__overlay">
         <span className="video-tile__name">

@@ -245,6 +245,10 @@ input, select {
   object-fit: cover;
 }
 
+.video-tile__video--hidden {
+  display: none;
+}
+
 .video-tile__avatar {
   width: 72px;
   height: 72px;
