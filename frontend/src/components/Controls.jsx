@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff,
-  MessageSquare, Circle, Square, PhoneOff, Settings, Users,
+  MessageSquare, Circle, Square, PhoneOff, Settings, Users, SwitchCamera,
 } from 'lucide-react';
 
 const Controls = ({
@@ -14,6 +14,8 @@ const Controls = ({
   callDuration,
   onToggleMute,
   onToggleCamera,
+  onSwitchCamera,
+  canSwitchCamera,
   onToggleScreenShare,
   onToggleRecording,
   onToggleChat,
@@ -42,6 +44,10 @@ const Controls = ({
 
         <button className={`ctrl-btn ${isCameraOff ? 'ctrl-btn--danger' : ''}`} onClick={onToggleCamera} title={isCameraOff ? 'Turn camera on' : 'Turn camera off'}>
           {isCameraOff ? <VideoOff size={20} /> : <Video size={20} />}
+        </button>
+
+        <button className="ctrl-btn ctrl-btn--camera-switch" onClick={onSwitchCamera} title="Switch camera" aria-label="Switch camera" disabled={!canSwitchCamera}>
+          <SwitchCamera size={20} />
         </button>
 
         <button className={`ctrl-btn ${isSharingScreen ? 'ctrl-btn--active' : ''}`} onClick={onToggleScreenShare} title="Share screen">

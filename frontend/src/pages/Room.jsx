@@ -296,6 +296,7 @@ function Room() {
       const constraints = kind === 'camera' ? { video: { deviceId: { exact: deviceId } } } : { audio: { deviceId: { exact: deviceId } } };
       const newStream = await navigator.mediaDevices.getUserMedia(constraints);
       const newTrack = kind === 'camera' ? newStream.getVideoTracks()[0] : newStream.getAudioTracks()[0];
+      if (kind === 'camera') newTrack.enabled = !isCameraOff;
 
       replaceTrackOnAllPeers(newTrack);
 
@@ -311,6 +312,21 @@ function Room() {
       else setSelectedMic(deviceId);
     } catch (err) {
       console.error('applyDevice failed', err);
+    }
+  };
+
+  const switchCamera = async () => {
+    if (!myStream || isSharingScreen) return;
+    try {
+      const cameras = (await navigator.mediaDevices.enumerateDevices()).filter((device) => device.kind === 'videoinput');
+      if (cameras.length < 2) return;
+
+      const currentDeviceId = localVideoTrackRef.current?.getSettings().deviceId || selectedCamera;
+      const currentIndex = cameras.findIndex((camera) => camera.deviceId === currentDeviceId);
+      const nextCamera = cameras[(currentIndex + 1) % cameras.length];
+      await applyDevice('camera', nextCamera.deviceId);
+    } catch (err) {
+      console.error('switchCamera failed', err);
     }
   };
 
@@ -391,6 +407,8 @@ function Room() {
         callDuration={callDuration}
         onToggleMute={toggleMute}
         onToggleCamera={toggleCamera}
+        onSwitchCamera={switchCamera}
+        canSwitchCamera={Boolean(myStream) && !isSharingScreen}
         onToggleScreenShare={toggleScreenShare}
         onToggleRecording={toggleRecording}
         onToggleChat={() => setIsChatOpen((v) => !v)}
