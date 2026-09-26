@@ -296,17 +296,19 @@ function Room() {
       const constraints = kind === 'camera' ? { video: { deviceId: { exact: deviceId } } } : { audio: { deviceId: { exact: deviceId } } };
       const newStream = await navigator.mediaDevices.getUserMedia(constraints);
       const newTrack = kind === 'camera' ? newStream.getVideoTracks()[0] : newStream.getAudioTracks()[0];
-      if (kind === 'camera') newTrack.enabled = !isCameraOff;
 
-      replaceTrackOnAllPeers(newTrack);
-
-      setMyStream((prev) => {
-        const others = kind === 'camera' ? prev.getAudioTracks() : prev.getVideoTracks();
-        const oldTrack = kind === 'camera' ? prev.getVideoTracks()[0] : prev.getAudioTracks()[0];
-        if (oldTrack) oldTrack.stop();
-        if (kind === 'camera') localVideoTrackRef.current = newTrack;
-        return new MediaStream(kind === 'camera' ? [newTrack, ...others] : [...others, newTrack]);
-      });
+      if (kind === 'camera') {
+        installCameraTrack(newTrack);
+      } else {
+        replaceTrackOnAllPeers(newTrack);
+        const currentStream = myStreamRef.current || myStream;
+        const oldTrack = currentStream?.getAudioTracks()[0];
+        const nextStream = new MediaStream([...currentStream.getVideoTracks(), newTrack]);
+        oldTrack?.stop();
+        myStreamRef.current = nextStream;
+        setMyStream(nextStream);
+        setLocalStream(nextStream);
+      }
 
       if (kind === 'camera') setSelectedCamera(deviceId);
       else setSelectedMic(deviceId);
@@ -315,16 +317,40 @@ function Room() {
     }
   };
 
+  const installCameraTrack = (newTrack) => {
+    const currentStream = myStreamRef.current || myStream;
+    const oldTrack = currentStream?.getVideoTracks()[0];
+    newTrack.enabled = !isCameraOff;
+    replaceTrackOnAllPeers(newTrack);
+
+    const nextStream = new MediaStream([newTrack, ...(currentStream?.getAudioTracks() || [])]);
+    localVideoTrackRef.current = newTrack;
+    myStreamRef.current = nextStream;
+    setMyStream(nextStream);
+    setLocalStream(nextStream);
+    if (oldTrack && oldTrack !== newTrack) oldTrack.stop();
+  };
+
   const switchCamera = async () => {
     if (!myStream || isSharingScreen) return;
     try {
-      const cameras = (await navigator.mediaDevices.enumerateDevices()).filter((device) => device.kind === 'videoinput');
-      if (cameras.length < 2) return;
+      const currentSettings = localVideoTrackRef.current?.getSettings() || {};
+      const nextFacingMode = currentSettings.facingMode === 'environment' ? 'user' : 'environment';
 
-      const currentDeviceId = localVideoTrackRef.current?.getSettings().deviceId || selectedCamera;
-      const currentIndex = cameras.findIndex((camera) => camera.deviceId === currentDeviceId);
-      const nextCamera = cameras[(currentIndex + 1) % cameras.length];
-      await applyDevice('camera', nextCamera.deviceId);
+      try {
+        const cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { exact: nextFacingMode } },
+          audio: false,
+        });
+        installCameraTrack(cameraStream.getVideoTracks()[0]);
+        setSelectedCamera(cameraStream.getVideoTracks()[0].getSettings().deviceId || '');
+      } catch (facingModeError) {
+        const cameras = (await navigator.mediaDevices.enumerateDevices()).filter((device) => device.kind === 'videoinput');
+        const currentDeviceId = currentSettings.deviceId || selectedCamera;
+        const nextCamera = cameras.find((camera) => camera.deviceId && camera.deviceId !== currentDeviceId);
+        if (!nextCamera) throw facingModeError;
+        await applyDevice('camera', nextCamera.deviceId);
+      }
     } catch (err) {
       console.error('switchCamera failed', err);
     }
