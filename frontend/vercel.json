@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/room/:roomId",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/index.html"
+    }
+  ]
+}
